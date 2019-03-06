@@ -46,35 +46,38 @@ object effects {
   /**
    * Using the helper functions, write a program that just returns a unit value.
    */
-  val unit: Console[???] = ???
+  val unit: Console[Unit] = Console.succeed(())
 
   /**
    * Using the helper functions, write a program that just returns the value 42.
    */
-  val fortyTwo: Console[???] = ???
+  val fortyTwo: Console[Int] = Console.succeed(42)
 
   /**
    * Using the helper functions, write a program that asks the user for their name.
    */
-  val askName: Console[Unit] = ???
+  val askName: Console[Unit] = Console.writeLine("What is your name?")
 
   /**
    * Using the helper functions, write a program that read the name of the user.
    */
-  val readName: Console[String] = ???
+  val readName: Console[String] = Console.readLine
 
   /**
    * Using the helper functions, write a program that greets the user by their name.
    */
-  def greetUser(name: String): Console[Unit] =
-    ???
+  def greetUser(name: String): Console[Unit] = Console.writeLine("Hello, " + name)
 
   /***
    * Using `flatMap` and the preceding three functions, write a program that
    * asks the user for their name, reads their name, and greets them.
    */
   val sayHello: Console[Unit] =
-    ???
+    for {
+      _ <- askName
+      name <- readName
+      _ <- greetUser(name)
+    } yield ()
 
   /**
    * Write a program that reads from the console then parse the given input into int if it possible
@@ -87,19 +90,36 @@ object effects {
    * the description of a given `Console[A]` into A and run it.
    */
   def unsafeRun[A](program: Console[A]): A =
-    ???
+    program match {
+      case Console.ReadLine(next) => unsafeRun(next(scala.io.StdIn.readLine))
+      case Console.WriteLine(line, next) =>
+        println(line)
+        unsafeRun(next)
+      case Console.Return(value) => value()
+    }
 
   /**
    * implement the following combinator `collectAll` that operates on programs
+   *
+   * == sequence
    */
   def collectAll[A](programs: List[Console[A]]): Console[List[A]] =
-    ???
+    programs.foldLeft[Console[List[A]]](Console.succeed(List[A]())) { (console, program) =>
+      for {
+        as <- console
+        a  <- program
+      } yield as :+ a
+    }
 
   /**
-   * implement the `foreach` function that compute a result for each iteration
+   * Implement the `foreach` function, which iterates over the values in a list,
+   * passing every value to a body, which effectfully computes a `B`, and
+   * collecting all such `B` values in a list.
+   *
+   * == traverse
    */
   def foreach[A, B](values: List[A])(body: A => Console[B]): Console[List[B]] =
-    ???
+    collectAll(values.map(body))
 
   /**
    * Using `Console.writeLine` and `Console.readLine`, map the following
@@ -114,24 +134,30 @@ object effects {
       "What is your age?",
       "What is your favorite programming language?"
     )
-  val answers: List[Console[String]] = ???
+  val answers: List[Console[String]] =
+    questions.map(q =>
+      for {
+        _ <- Console.writeLine(q)
+        answer <- Console.readLine
+      } yield answer
+    )
 
   /**
    * Using `collectAll`, transform `answers` into a program that returns
    * a list of strings.
    */
-  val answers2: Console[List[String]] = ???
+  val answers2: Console[List[String]] = collectAll(answers)
 
   /**
    * Now using only `questions` and `foreach`, write a program that is
    * equivalent to `answers2`.
    */
-  val answers3: Console[List[String]] = foreach(???) { question =>
-    ???
-  }
+  val answers3: Console[List[String]] = foreach(questions) { q => Console.writeLine(q) *> Console.readLine }
 
   /**
    * Implement the methods of Thunk
+   *
+   * A hunk of unevaluated Scala code
    */
   class Thunk[A](val unsafeRun: () => A) {
     def map[B](ab: A => B): Thunk[B]             = ???
@@ -147,8 +173,8 @@ object effects {
    * Build the version of printLn and readLn
    * then make a simple program base on that.
    */
-  def printLn(line: String): Thunk[Unit] = ???
-  def readLn: Thunk[String]              = ???
+  def printLn(line: String): Thunk[Unit] = ??? // Thunk(() => println(line))
+  def readLn: Thunk[String]              = ??? // Thunk(() => scala.io.StdIn.readLine())
 
   val thunkProgram: Thunk[Unit] = ???
 }
